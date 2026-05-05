@@ -98,22 +98,48 @@ FeatureVec extract_features(const WavData& wav) {
     const double Fs = static_cast<double>(wav.sample_rate);
     const double duration = s.size() / Fs;
 
-    double sum_sq = 0.0;
-    double peak = 0.0;
-    long long zc = 0;
-    for (size_t i = 0; i < s.size(); ++i) {
-        double v = s[i];
-        sum_sq += v * v;
-        double a = std::fabs(v);
-        if (a > peak) peak = a;
-        if (i > 0) {
-            // Переход через ноль: знак сменился.
-            if ((s[i - 1] >= 0.0) != (s[i] >= 0.0)) ++zc;
+    // Фреймовый расчёт RMS и ZCR (фрейм = 512 сэмплов).
+    constexpr int kFrame = 512;
+    const int n_frames = static_cast<int>(s.size()) / kFrame;
+
+    double rms_mean = 0.0, rms_var = 0.0;
+    double zcr_mean = 0.0, zcr_var = 0.0;
+
+    if (n_frames > 0) {
+        std::vector<double> rms_frames(n_frames);
+        std::vector<double> zcr_frames(n_frames);
+        const double frame_dur = static_cast<double>(kFrame) / Fs;
+
+        for (int i = 0; i < n_frames; ++i) {
+            const double* p = &s[static_cast<size_t>(i) * kFrame];
+            double sum_sq = 0.0;
+            long zc = 0;
+            for (int j = 0; j < kFrame; ++j) {
+                sum_sq += p[j] * p[j];
+                if (j > 0 && ((p[j - 1] >= 0.0) != (p[j] >= 0.0))) ++zc;
+            }
+            rms_frames[i] = std::sqrt(sum_sq / kFrame);
+            zcr_frames[i] = static_cast<double>(zc) / frame_dur;
         }
+
+        // Средние и дисперсии (несмещённые формулы не критичны — берём
+        // population variance).
+        for (int i = 0; i < n_frames; ++i) {
+            rms_mean += rms_frames[i];
+            zcr_mean += zcr_frames[i];
+        }
+        rms_mean /= n_frames;
+        zcr_mean /= n_frames;
+
+        for (int i = 0; i < n_frames; ++i) {
+            double dr = rms_frames[i] - rms_mean;
+            double dz = zcr_frames[i] - zcr_mean;
+            rms_var += dr * dr;
+            zcr_var += dz * dz;
+        }
+        rms_var /= n_frames;
+        zcr_var /= n_frames;
     }
-    double rms = std::sqrt(sum_sq / s.size());
-    double crest = (rms > 0.0) ? peak / rms : 0.0;
-    double zcr = (duration > 0.0) ? static_cast<double>(zc) / duration : 0.0;
 
     double bpm = estimate_bpm(s, wav.sample_rate);
 
@@ -122,7 +148,7 @@ FeatureVec extract_features(const WavData& wav) {
                                     2000.0, 4000.0, 8000.0, 16000.0};
     double num = 0.0, den = 0.0;
     for (double fk : freqs) {
-        if (fk >= Fs * 0.5) continue;  // выше Найквиста — пропускаем
+        if (fk >= Fs * 0.5) continue;
         double e = bandpass_energy(s, fk, 1.0, Fs);
         num += fk * e;
         den += e;
@@ -130,10 +156,10 @@ FeatureVec extract_features(const WavData& wav) {
     double centroid = (den > 0.0) ? num / den : 0.0;
 
     f[F_DURATION] = duration;
-    f[F_RMS] = rms;
-    f[F_PEAK] = peak;
-    f[F_CREST] = crest;
-    f[F_ZCR] = zcr;
+    f[F_RMS_MEAN] = rms_mean;
+    f[F_RMS_VAR] = rms_var;
+    f[F_ZCR_VAR] = zcr_var;
+    f[F_ZCR_MEAN] = zcr_mean;
     f[F_BPM] = bpm;
     f[F_CENTROID] = centroid;
     return f;
@@ -149,8 +175,7 @@ bool extract_features_from_file(const std::string& path, FeatureVec& out,
 
 const char* feature_name(int i) {
     static const char* names[FEATURE_DIM] = {
-        "duration_sec", "rms",          "peak",
-        "crest_factor", "zcr",          "bpm",
-        "spectral_centroid"};
+        "duration_sec", "rms_mean", "rms_var",          "zcr_var",
+        "zcr_mean",     "bpm",      "spectral_centroid"};
     return (i >= 0 && i < FEATURE_DIM) ? names[i] : "?";
 }

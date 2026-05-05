@@ -11,10 +11,10 @@ constexpr int FEATURE_DIM = 7;
 // Индексы признаков в векторе.
 enum FeatureIdx {
     F_DURATION = 0,
-    F_RMS = 1,
-    F_PEAK = 2,
-    F_CREST = 3,
-    F_ZCR = 4,
+    F_RMS_MEAN = 1,
+    F_RMS_VAR = 2,
+    F_ZCR_VAR = 3,
+    F_ZCR_MEAN = 4,
     F_BPM = 5,
     F_CENTROID = 6,
 };

@@ -6,7 +6,7 @@
 namespace {
 
 const char* kHeader =
-    "name,duration_sec,rms,peak,crest_factor,zcr,bpm,spectral_centroid";
+    "name,duration_sec,rms_mean,rms_var,zcr_var,zcr_mean,bpm,spectral_centroid";
 
 std::string escape_csv(const std::string& s) {
     bool needs_quote = false;
