@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm -f mrec.exe)",
+      "Bash(g++ -std=c++17 -O2 -Wall -Wextra -c wav_reader.cpp features.cpp metrics.cpp linear_search.cpp kdtree.cpp database.cpp main.cpp)",
+      "Bash(g++ -std=c++17 -O2 -o music_rec.exe *.o)",
+      "Bash(g++ -std=c++17 -O2 -v -o music_rec.exe *.o)"
+    ]
+  }
+}
