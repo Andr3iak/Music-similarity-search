@@ -23,9 +23,8 @@ namespace {
 
 const std::string kDbPath = "database.csv";
 
-// Min-max нормализация всей базы вместе с запросом.
-// На вход — массив векторов признаков (все треки + запрос в конце).
-// Изменяет вектора на нормализованные значения.
+// нормализация min-max по всей базе + запросу вместе
+// важно нормировать совместно, иначе запрос будет в другом масштабе
 void minmax_normalize(std::vector<FeatureVec>& all) {
     if (all.empty()) return;
     FeatureVec mn = all[0];
@@ -177,6 +176,7 @@ void cmd_search(const Database& db) {
     auto kd_res = tree.knn(qn, w, k);
     auto t4 = clk::now();
 
+    // конвертируем duration в миллисекунды
     auto ms = [](clk::duration d) {
         return std::chrono::duration<double, std::milli>(d).count();
     };
@@ -196,8 +196,8 @@ void cmd_search(const Database& db) {
     std::cout << "Время поиска: " << ms(t4 - t3) << " ms";
     std::cout << " (построение: " << ms(t3 - t2) << " ms)\n";
 
-    // Сравнение результатов: набор индексов должен совпадать.
-    // (При равных расстояниях порядок может отличаться, поэтому сравниваем как множества.)
+    // проверяем что оба алгоритма нашли одно и то же
+    // сортируем по индексу т.к. при одинаковых расстояниях порядок может отличаться
     auto extract_set = [](const std::vector<std::pair<double, int>>& v) {
         std::vector<int> idx;
         for (const auto& p : v) idx.push_back(p.second);
@@ -210,13 +210,12 @@ void cmd_search(const Database& db) {
         std::cout << "Результаты обоих алгоритмов совпадают.\n";
     } else {
         std::cout << "ВНИМАНИЕ: результаты отличаются!\n";
-        // Допускаем расхождение только из-за равных расстояний.
-        // В общем случае расстояния должны совпадать поэлементно.
         bool dist_match = lin_res.size() == kd_res.size();
         for (size_t i = 0; dist_match && i < lin_res.size(); ++i) {
             if (std::abs(lin_res[i].first - kd_res[i].first) > 1e-9)
                 dist_match = false;
         }
+        // расстояния должны совпадать даже если порядок разный
         assert(dist_match && "Расстояния линейного поиска и k-d дерева должны совпадать");
     }
 }

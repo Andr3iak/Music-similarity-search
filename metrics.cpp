@@ -2,6 +2,8 @@
 
 #include <cmath>
 
+// взвешенное евклидово расстояние в квадрате
+// используем квадрат там где нужно только сравнение — sqrt не нужен
 double weighted_sq_distance(const FeatureVec& a, const FeatureVec& b,
                             const Weights& w) {
     double s = 0.0;

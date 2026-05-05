@@ -7,8 +7,9 @@ namespace {
 
 using Heap = std::priority_queue<std::pair<double, int>>;
 
-// Рекурсивно строит сбалансированное k-d дерево.
-// indices хранит индексы точек, [lo, hi) — текущий полуинтервал.
+// строим k-d дерево рекурсивно
+// на каждом уровне чередуем ось разбиения (depth % FEATURE_DIM)
+// [lo, hi) — текущий диапазон индексов
 std::unique_ptr<KdNode> build_recursive(const std::vector<FeatureVec>& pts,
                                         std::vector<int>& indices, int lo,
                                         int hi, int depth) {
@@ -16,7 +17,7 @@ std::unique_ptr<KdNode> build_recursive(const std::vector<FeatureVec>& pts,
     int axis = depth % FEATURE_DIM;
     int mid = lo + (hi - lo) / 2;
 
-    // Медианный элемент по оси axis ставим в позицию mid (partial sort).
+    // nth_element ставит медиану в позицию mid без полной сортировки — O(n)
     std::nth_element(indices.begin() + lo, indices.begin() + mid,
                      indices.begin() + hi,
                      [&](int a, int b) {
@@ -37,8 +38,8 @@ void knn_recursive(const KdNode* node, const FeatureVec& q, const Weights& w,
                    int k, Heap& heap) {
     if (!node) return;
 
-    // Расстояние от запроса до текущей точки (квадрат).
     double d2 = weighted_sq_distance(node->point, q, w);
+    // heap — max-куча, на вершине самый дальний из k кандидатов
     if (static_cast<int>(heap.size()) < k) {
         heap.emplace(d2, node->idx);
     } else if (d2 < heap.top().first) {
@@ -53,9 +54,8 @@ void knn_recursive(const KdNode* node, const FeatureVec& q, const Weights& w,
 
     knn_recursive(near_child, q, w, k, heap);
 
-    // Условие отсечения: проверяем дальнее поддерево, только если
-    // взвешенный квадрат расстояния по оси меньше верхушки кучи
-    // (или куча ещё не заполнена до k).
+    // проверяем дальнее поддерево только если оно может содержать более близкие точки
+    // (расстояние до разделяющей гиперплоскости меньше текущего k-го)
     double axis_d2 = w[axis] * diff * diff;
     if (static_cast<int>(heap.size()) < k || axis_d2 < heap.top().first) {
         knn_recursive(far_child, q, w, k, heap);

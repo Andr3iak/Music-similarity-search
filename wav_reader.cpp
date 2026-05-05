@@ -6,7 +6,7 @@
 
 namespace {
 
-// Читаем little-endian целые числа из потока.
+// WAV-файл хранит числа в little-endian, читаем побайтово
 bool read_u32_le(std::ifstream& f, uint32_t& v) {
     unsigned char b[4];
     if (!f.read(reinterpret_cast<char*>(b), 4)) return false;
@@ -54,7 +54,7 @@ bool read_wav(const std::string& path, WavData& out, std::string& error) {
              bits_per_sample = 0;
     uint32_t sample_rate = 0, byte_rate = 0;
 
-    // Итеративно перебираем чанки, ищем "fmt " и "data".
+    // перебираем чанки до упора — нам нужны "fmt " и "data"
     while (f) {
         char tag[4];
         uint32_t chunk_size = 0;
@@ -85,10 +85,12 @@ bool read_wav(const std::string& path, WavData& out, std::string& error) {
                 return false;
             }
             if (audio_format != 1) {
+                // 1 = PCM, всё остальное (float, alaw и т.д.) не поддерживаем
                 error = "поддерживается только PCM (AudioFormat=1)";
                 return false;
             }
             if (bits_per_sample != 16) {
+                // 8-bit и 24-bit пока не реализованы
                 error = "поддерживается только 16-bit PCM";
                 return false;
             }
@@ -115,13 +117,14 @@ bool read_wav(const std::string& path, WavData& out, std::string& error) {
             out.bits_per_sample = bits_per_sample;
             out.samples.resize(num_frames);
 
+            // int16 -> double в диапазоне [-1, 1]
             constexpr double kScale = 1.0 / 32768.0;
             if (num_channels == 1) {
                 for (uint32_t i = 0; i < num_frames; ++i) {
                     out.samples[i] = raw[i] * kScale;
                 }
             } else {
-                // stereo -> усредняем каналы
+                // stereo: берём среднее L и R каналов
                 for (uint32_t i = 0; i < num_frames; ++i) {
                     double l = raw[2 * i] * kScale;
                     double r = raw[2 * i + 1] * kScale;
@@ -130,7 +133,7 @@ bool read_wav(const std::string& path, WavData& out, std::string& error) {
             }
             return true;
         } else {
-            // неизвестный чанк — пропускаем
+            // неизвестный чанк (LIST, INFO, id3 и т.п.) — просто пропускаем
             std::streamoff skip = chunk_size + (chunk_size & 1u);
             f.seekg(skip, std::ios::cur);
         }

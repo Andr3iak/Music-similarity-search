@@ -8,6 +8,7 @@ namespace {
 const char* kHeader =
     "name,duration_sec,rms_mean,rms_var,zcr_var,zcr_mean,bpm,spectral_centroid";
 
+// экранируем имя трека если в нём есть запятые или кавычки
 std::string escape_csv(const std::string& s) {
     bool needs_quote = false;
     for (char c : s) {
@@ -21,14 +22,14 @@ std::string escape_csv(const std::string& s) {
     out.reserve(s.size() + 2);
     out.push_back('"');
     for (char c : s) {
-        if (c == '"') out.push_back('"');
+        if (c == '"') out.push_back('"');  // "" = экранированная кавычка в CSV
         out.push_back(c);
     }
     out.push_back('"');
     return out;
 }
 
-// Простой парсер CSV-строки: поддерживает поля в кавычках с экранированием "".
+// разбиваем строку CSV на поля, учитываем кавычки
 std::vector<std::string> split_csv(const std::string& line) {
     std::vector<std::string> fields;
     std::string cur;
@@ -63,7 +64,7 @@ std::vector<std::string> split_csv(const std::string& line) {
 
 std::string format_record(const TrackRecord& r) {
     std::ostringstream oss;
-    oss.precision(10);
+    oss.precision(10);  // 10 знаков — достаточно для double
     oss << escape_csv(r.name);
     for (int i = 0; i < FEATURE_DIM; ++i) {
         oss << "," << r.features[i];
@@ -83,12 +84,11 @@ bool Database::load(const std::string& path, std::string& error) {
     std::string line;
     bool first = true;
     while (std::getline(f, line)) {
-        if (!line.empty() && line.back() == '\r') line.pop_back();
+        if (!line.empty() && line.back() == '\r') line.pop_back();  // Windows \r\n
         if (line.empty()) continue;
         if (first) {
             first = false;
-            // Пропускаем заголовок.
-            continue;
+            continue;  // пропускаем строку-заголовок
         }
         auto fields = split_csv(line);
         if (fields.size() != 1 + FEATURE_DIM) {
@@ -124,7 +124,7 @@ void Database::append(const TrackRecord& rec) { records_.push_back(rec); }
 
 bool Database::append_to_file(const std::string& path, const TrackRecord& rec,
                               std::string& error) const {
-    // Если файла нет, создаём с заголовком.
+    // если файл не существует — нужно добавить заголовок
     bool need_header = false;
     {
         std::ifstream test(path);
