@@ -99,7 +99,11 @@ FeatureVec extract_features(const WavData& wav) {
 
     const auto& s = wav.samples;
     const double Fs = static_cast<double>(wav.sample_rate);
-    const double duration = s.size() / Fs;
+    double peak_amp = 0.0;
+    for (double v : s) {
+        double av = std::abs(v);
+        if (av > peak_amp) peak_amp = av;
+    }
 
     // считаем RMS и ZCR по фреймам (размер фрейма 512 — стандарт для аудио)
     constexpr int kFrame = 512;
@@ -160,7 +164,7 @@ FeatureVec extract_features(const WavData& wav) {
     }
     double centroid = (den > 0.0) ? num / den : 0.0;
 
-    f[F_DURATION] = duration;
+    f[F_PEAK_AMP] = peak_amp;
     f[F_RMS_MEAN] = rms_mean;
     f[F_RMS_VAR] = rms_var;
     f[F_ZCR_VAR] = zcr_var;
@@ -180,7 +184,7 @@ bool extract_features_from_file(const std::string& path, FeatureVec& out,
 
 const char* feature_name(int i) {
     static const char* names[FEATURE_DIM] = {
-        "duration_sec", "rms_mean", "rms_var",          "zcr_var",
+        "peak_amplitude", "rms_mean", "rms_var",         "zcr_var",
         "zcr_mean",     "bpm",      "spectral_centroid"};
     return (i >= 0 && i < FEATURE_DIM) ? names[i] : "?";
 }

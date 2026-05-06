@@ -6,7 +6,8 @@
 namespace {
 
 const char* kHeader =
-    "name,duration_sec,rms_mean,rms_var,zcr_var,zcr_mean,bpm,spectral_centroid";
+    "name,peak_amplitude,rms_mean,rms_var,zcr_var,zcr_mean,bpm,spectral_"
+    "centroid";
 
 // экранируем имя трека если в нём есть запятые или кавычки
 std::string escape_csv(const std::string& s) {
@@ -84,7 +85,8 @@ bool Database::load(const std::string& path, std::string& error) {
     std::string line;
     bool first = true;
     while (std::getline(f, line)) {
-        if (!line.empty() && line.back() == '\r') line.pop_back();  // Windows \r\n
+        if (!line.empty() && line.back() == '\r')
+            line.pop_back();  // Windows \r\n
         if (line.empty()) continue;
         if (first) {
             first = false;

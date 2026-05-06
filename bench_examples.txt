@@ -1,0 +1,24 @@
+Примеры рекомендаций (веса: w1)
+============================================================
+
+Запрос: blues/blues.00000.wav
+  1. metal/metal.00088.wav  dist=0.096024
+  2. disco/disco.00060.wav  dist=0.100276
+  3. blues/blues.00048.wav  dist=0.101491
+  4. country/country.00055.wav  dist=0.109217
+  5. blues/blues.00041.wav  dist=0.113275
+
+Запрос: classical/classical.00000.wav
+  1. classical/classical.00002.wav  dist=0.040843
+  2. classical/classical.00010.wav  dist=0.062661
+  3. classical/classical.00082.wav  dist=0.088307
+  4. classical/classical.00003.wav  dist=0.099852
+  5. classical/classical.00004.wav  dist=0.099969
+
+Запрос: metal/metal.00000.wav
+  1. blues/blues.00063.wav  dist=0.165136
+  2. rock/rock.00088.wav  dist=0.196759
+  3. metal/metal.00001.wav  dist=0.197402
+  4. metal/metal.00012.wav  dist=0.201587
+  5. blues/blues.00064.wav  dist=0.220998
+
